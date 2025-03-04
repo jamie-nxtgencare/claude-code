@@ -6,10 +6,7 @@
       "TZ": "${localEnv:TZ:America/Los_Angeles}"
     }
   },
-  "runArgs": [
-    "--cap-add=NET_ADMIN",
-    "--cap-add=NET_RAW"
-  ],
+  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -41,6 +38,7 @@
     "source=claude-code-bashhistory,target=/commandhistory,type=volume",
     "source=claude-code-config,target=/home/node/.claude,type=volume"
   ],
+  "forwardPorts": [3000],
   "remoteEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
