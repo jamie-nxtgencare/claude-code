@@ -58,7 +58,6 @@ for domain in \
     "statsig.anthropic.com" \
     "statsig.com" \
     "pub.dev" \
-    "api.pub.dev" \
     "pub.dartlang.org" \
     "storage.googleapis.com" \
     "*.googleapis.com" \
@@ -92,7 +91,7 @@ for domain in \
             continue
         fi
         echo "Adding $ip for $domain"
-        ipset add allowed-domains "$ip"
+        ipset add allowed-domains "$ip" 2>/dev/null || echo "  (IP $ip already in set)"
     done < <(echo "$ips")
 done
 
@@ -121,7 +120,7 @@ for range in \
     "199.36.156.0/24" \
     "208.68.108.0/23"; do
     echo "Adding Google Cloud range $range"
-    ipset add allowed-domains "$range"
+    ipset add allowed-domains "$range" 2>/dev/null || echo "  (Range $range already in set)"
 done
 
 # Get host IP from default route
