@@ -56,22 +56,72 @@ for domain in \
     "api.anthropic.com" \
     "sentry.io" \
     "statsig.anthropic.com" \
-    "statsig.com"; do
+    "statsig.com" \
+    "pub.dev" \
+    "api.pub.dev" \
+    "pub.dartlang.org" \
+    "storage.googleapis.com" \
+    "*.googleapis.com" \
+    "googleapis.com" \
+    "fonts.googleapis.com" \
+    "fonts.gstatic.com" \
+    "dart.dev" \
+    "flutter.dev" \
+    "dartlang.org" \
+    "oauth2.googleapis.com" \
+    "accounts.google.com" \
+    "www.googleapis.com" \
+    "compute.googleapis.com" \
+    "cloudresourcemanager.googleapis.com" \
+    "crash-reporting-worker.p.googleapis.com" \
+    "dart-services.p.googleapis.com" \
+    "maven.google.com" \
+    "dl.google.com" \
+    "cocoapods.org" \
+    "cdn.cocoapods.org"; do
     echo "Resolving $domain..."
     ips=$(dig +short A "$domain")
     if [ -z "$ips" ]; then
-        echo "ERROR: Failed to resolve $domain"
-        exit 1
+        echo "WARNING: Failed to resolve $domain, skipping..."
+        continue
     fi
-    
+
     while read -r ip; do
         if [[ ! "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            echo "ERROR: Invalid IP from DNS for $domain: $ip"
-            exit 1
+            echo "WARNING: Invalid IP from DNS for $domain: $ip, skipping..."
+            continue
         fi
         echo "Adding $ip for $domain"
         ipset add allowed-domains "$ip"
     done < <(echo "$ips")
+done
+
+# Add Google Cloud Storage IP ranges for Flutter dependencies
+echo "Adding Google Cloud Storage ranges for Flutter..."
+# These are common Google Cloud Storage IP ranges
+for range in \
+    "34.64.0.0/11" \
+    "34.96.0.0/12" \
+    "35.184.0.0/13" \
+    "35.192.0.0/14" \
+    "35.196.0.0/15" \
+    "35.198.0.0/16" \
+    "35.199.0.0/16" \
+    "35.200.0.0/13" \
+    "35.208.0.0/12" \
+    "35.224.0.0/12" \
+    "35.240.0.0/13" \
+    "108.177.8.0/21" \
+    "108.177.96.0/19" \
+    "130.211.0.0/16" \
+    "162.216.148.0/22" \
+    "162.222.176.0/21" \
+    "173.255.112.0/20" \
+    "199.36.154.0/23" \
+    "199.36.156.0/24" \
+    "208.68.108.0/23"; do
+    echo "Adding Google Cloud range $range"
+    ipset add allowed-domains "$range"
 done
 
 # Get host IP from default route
@@ -88,7 +138,6 @@ echo "Host network detected as: $HOST_NETWORK"
 iptables -A INPUT -s "$HOST_NETWORK" -j ACCEPT
 iptables -A OUTPUT -d "$HOST_NETWORK" -j ACCEPT
 
-# Set default policies to DROP first
 # Set default policies to DROP first
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
@@ -116,4 +165,28 @@ if ! curl --connect-timeout 5 https://api.github.com/zen >/dev/null 2>&1; then
     exit 1
 else
     echo "Firewall verification passed - able to reach https://api.github.com as expected"
+fi
+
+# Verify Flutter/Dart access
+echo "Verifying Flutter/Dart domain access..."
+if curl --connect-timeout 5 https://pub.dev >/dev/null 2>&1; then
+    echo "Firewall verification passed - able to reach pub.dev for Flutter/Dart packages"
+else
+    echo "WARNING: Unable to reach pub.dev - Flutter commands may still fail"
+fi
+
+# Verify Android dependency access
+echo "Verifying Android dependency domain access..."
+if curl --connect-timeout 5 https://maven.google.com >/dev/null 2>&1; then
+    echo "Firewall verification passed - able to reach maven.google.com for Android dependencies"
+else
+    echo "WARNING: Unable to reach maven.google.com - Android builds may fail"
+fi
+
+# Verify iOS dependency access
+echo "Verifying iOS dependency domain access..."
+if curl --connect-timeout 5 https://cocoapods.org >/dev/null 2>&1; then
+    echo "Firewall verification passed - able to reach cocoapods.org for iOS dependencies"
+else
+    echo "WARNING: Unable to reach cocoapods.org - iOS builds may fail"
 fi

@@ -21,9 +21,36 @@ RUN apt update && apt install -y less \
   aggregate \
   jq
 
+# Install Flutter dependencies
+RUN apt update && apt install -y \
+  curl \
+  file \
+  unzip \
+  xz-utils \
+  zip \
+  libglu1-mesa \
+  clang \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libgtk-3-dev
+
+# Install Flutter (as root)
+RUN git clone https://github.com/flutter/flutter.git -b stable /opt/flutter && \
+    chown -R node:node /opt/flutter
+
+# Set Flutter environment variables
+ENV PATH="/opt/flutter/bin:${PATH}"
+ENV FLUTTER_ROOT="/opt/flutter"
+ENV PUB_CACHE="/workspace/.pub-cache"
+
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
   chown -R node:node /usr/local/share
+
+# Create workspace and config directories and set permissions
+RUN mkdir -p /workspace /home/node/.claude /workspace/.pub-cache && \
+  chown -R node:node /workspace /home/node/.claude /workspace/.pub-cache
 
 ARG USERNAME=node
 
@@ -36,10 +63,6 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 # Set `DEVCONTAINER` environment variable to help with orientation
 ENV DEVCONTAINER=true
 
-# Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude && \
-  chown -R node:node /workspace /home/node/.claude
-
 WORKDIR /workspace
 
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -49,6 +72,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Set up non-root user
 USER node
+
+# Pre-download Flutter dependencies (as node user)
+RUN flutter precache && \
+    flutter config --no-analytics
 
 # Install global packages
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
